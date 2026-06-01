@@ -1,27 +1,7 @@
-name: DevOps Practice Pipeline
-
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
+name: Test Runner
+on: [push]
 jobs:
-  test-runner:
+  test:
     runs-on: self-hosted
-
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Show system info
-        run: |
-          hostname
-          uname -a
-          whoami
-          pwd
-
-      - name: Run simple test
-        run: |
-          echo "CI/CD pipeline is working"
-          echo "Testing on self-hosted runner"
+      - run: echo "Runner works!"
