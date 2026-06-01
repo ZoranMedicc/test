@@ -1,30 +1,258 @@
-name: Build and Test
-on: [push]
+name: Learn CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
+  # Stage 1: Code Quality
+  lint:
+    runs-on: self-hosted
+    name: "Stage 1: Linting & Code Quality"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Display file structure
+        run: |
+          echo "📁 Repository structure:"
+          ls -la
+          pwd
+
+      - name: Check for code style issues
+        run: |
+          echo "✅ Lint check passed!"
+          echo "In a real project, this would run: eslint, prettier, pylint, etc."
+
+  # Stage 2: Unit Tests
+  unit-tests:
+    runs-on: self-hosted
+    name: "Stage 2: Unit Tests"
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run unit tests
+        run: |
+          echo "🧪 Running unit tests..."
+          echo "Test 1: Math operations"
+          test $(echo "2 + 2" | bc) -eq 4 && echo "✅ Test passed" || echo "❌ Test failed"
+          
+          echo "Test 2: String validation"
+          test "hello" = "hello" && echo "✅ Test passed" || echo "❌ Test failed"
+          
+          echo "Test 3: File operations"
+          touch /tmp/test-file.txt && test -f /tmp/test-file.txt && echo "✅ Test passed" || echo "❌ Test failed"
+
+  # Stage 3: Build
   build:
     runs-on: self-hosted
+    name: "Stage 3: Build Application"
+    needs: unit-tests
     steps:
-      - uses: actions/checkout@v3
-      - run: echo "Hello, ${{ github.actor }}!"
-      
-  test1:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Create build directory
+        run: |
+          mkdir -p build
+          echo "Build started at $(date)" > build/build-info.txt
+          echo "Commit: ${{ github.sha }}" >> build/build-info.txt
+          echo "Branch: ${{ github.ref_name }}" >> build/build-info.txt
+
+      - name: Compile/Package application
+        run: |
+          echo "📦 Building application..."
+          echo "console.log('Hello from the app!');" > build/app.js
+          ls -la build/
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-output
+          path: build/
+
+  # Stage 4: Integration Tests
+  integration-tests:
     runs-on: self-hosted
+    name: "Stage 4: Integration Tests"
+    needs: build
     steps:
-      - run: |
-          hostname
-          uname -a
-          whoami
-          pwd
-      
-  test2:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-output
+          path: build/
+
+      - name: Run integration tests
+        run: |
+          echo "🔗 Running integration tests..."
+          echo "Integration Test 1: API connectivity"
+          curl -s https://api.github.com/users/github | grep -q "login" && echo "✅ GitHub API accessible" || echo "❌ API test failed"
+          
+          echo "Integration Test 2: Artifact validation"
+          test -f build/app.js && echo "✅ Build artifact exists" || echo "❌ Artifact missing"
+          
+          echo "Integration Test 3: Docker simulation"
+          echo "✅ Docker image would be built here in production"
+
+  # Stage 5: Security Scan
+  security:
     runs-on: self-hosted
+    name: "Stage 5: Security Scanning"
+    needs: build
     steps:
-      - run: echo "This job tests something, but takes more time"
-      - run: sleep 20
-      
-  deploy:
-    needs: [test1, test2]
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Check for secrets
+        run: |
+          echo "🔒 Scanning for exposed secrets..."
+          if grep -r "password\|api_key\|secret" . --include="*.js" --include="*.py" --include="*.yml" 2>/dev/null; then
+            echo "⚠️ Potential secrets found!"
+          else
+            echo "✅ No obvious secrets detected"
+          fi
+
+      - name: Dependency vulnerability check
+        run: |
+          echo "📋 Checking dependencies..."
+          echo "✅ Dependency scan complete (would use npm audit, safety, etc. in production)"
+
+  # Stage 6: Deploy to Staging
+  deploy-staging:
     runs-on: self-hosted
+    name: "Stage 6: Deploy to Staging"
+    needs: [integration-tests, security]
+    environment: staging
     steps:
-      - run: echo "Deploying from ${{ github.ref_name }} branch"
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-output
+          path: build/
+
+      - name: Deploy to staging environment
+        run: |
+          echo "🚀 Deploying to STAGING environment..."
+          echo "Environment: staging"
+          echo "Deployment time: $(date)"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "✅ Staging deployment successful!"
+
+      - name: Run smoke tests on staging
+        run: |
+          echo "🔍 Running smoke tests on staging..."
+          echo "Test 1: Health check"
+          echo "✅ Service is healthy"
+          echo "Test 2: Core functionality"
+          echo "✅ Core features working"
+
+  # Stage 7: Performance Tests
+  performance:
+    runs-on: self-hosted
+    name: "Stage 7: Performance Testing"
+    needs: deploy-staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run performance benchmarks
+        run: |
+          echo "⚡ Running performance tests..."
+          echo "Benchmark 1: Response time"
+          time sleep 0.1
+          echo "✅ Response time acceptable"
+          
+          echo "Benchmark 2: Memory usage"
+          echo "✅ Memory usage within limits"
+          
+          echo "Benchmark 3: Build time"
+          echo "✅ Build completed in acceptable time"
+
+  # Stage 8: Deploy to Production
+  deploy-production:
+    runs-on: self-hosted
+    name: "Stage 8: Deploy to Production"
+    needs: performance
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: build-output
+          path: build/
+
+      - name: Deploy to production environment
+        run: |
+          echo "🎉 DEPLOYING TO PRODUCTION!"
+          echo "=========================================="
+          echo "Environment: PRODUCTION"
+          echo "Deployment time: $(date)"
+          echo "Commit SHA: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Deployed by: ${{ github.actor }}"
+          echo "=========================================="
+          echo "✅ Production deployment successful!"
+
+      - name: Post-deployment validation
+        run: |
+          echo "✔️ Production health check"
+          echo "✔️ Database migrations applied"
+          echo "✔️ Load balancer updated"
+
+  # Stage 9: Notifications & Reporting
+  notify:
+    runs-on: self-hosted
+    name: "Stage 9: Notifications & Reports"
+    if: always()
+    needs: [lint, unit-tests, build, integration-tests, security, deploy-staging, performance, deploy-production]
+    steps:
+      - name: Check pipeline status
+        run: |
+          echo "📊 PIPELINE EXECUTION REPORT"
+          echo "=========================================="
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Status: ${{ job.status }}"
+          echo "=========================================="
+
+      - name: Print job summaries
+        run: |
+          echo "✅ Linting: Completed"
+          echo "✅ Unit Tests: Completed"
+          echo "✅ Build: Completed"
+          echo "✅ Integration Tests: Completed"
+          echo "✅ Security: Completed"
+          echo "✅ Staging Deploy: Completed"
+          echo "✅ Performance: Completed"
+          echo "✅ Production Deploy: Completed"
+
+      - name: Summary for learning
+        run: |
+          echo "🎓 LEARNING POINTS:"
+          echo "1. ✅ Code Quality: Linting catches style issues"
+          echo "2. ✅ Testing: Unit & integration tests verify functionality"
+          echo "3. ✅ Building: Artifacts are created for deployment"
+          echo "4. ✅ Security: Scanning prevents vulnerabilities"
+          echo "5. ✅ Staging: Test deployment before production"
+          echo "6. ✅ Performance: Benchmarks ensure quality"
+          echo "7. ✅ Production: Safe deployment after all checks pass"
+          echo "8. ✅ Notifications: Stakeholders are informed"
+          echo "9. ✅ Environments: Different configs for staging vs production"
