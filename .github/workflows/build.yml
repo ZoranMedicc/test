@@ -1,0 +1,26 @@
+name: Build and Test
+on: [push]
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+      - run: echo "Hello, ${{ github.actor }}!"
+      
+  test1:
+    runs-on: self-hosted
+    steps:
+      - run: echo "This job tests something"
+      
+  test2:
+    runs-on: self-hosted
+    steps:
+      - run: echo "This job tests something, but takes more time"
+      - run: sleep 20
+      
+  deploy:
+    needs: [test1, test2]
+    runs-on: self-hosted
+    steps:
+      - run: echo "Deploying from ${{ github.ref_name }} branch"
