@@ -11,7 +11,11 @@ jobs:
   test1:
     runs-on: self-hosted
     steps:
-      - run: echo "This job tests something"
+      - run: |
+          hostname
+          uname -a
+          whoami
+          pwd
       
   test2:
     runs-on: self-hosted
